@@ -16,12 +16,12 @@ The application foundation is complete:
 - JSON API for the same core ticket workflow.
 - Five intentional vulnerabilities reserved for the security phases.
 
-The next phases are Docker hardening, GitLab CI/CD security gates, Kubernetes
-deployment, DAST, logging, and remediation evidence.
+The next phases are Kubernetes deployment, DAST, logging, and remediation
+evidence.
 
 ## Repository
 
-GitLab: <https://gitlab.com/rayen.dabbabi/securedesk>
+GitHub: <https://github.com/Dabbabi-Rayen/securedesk>
 
 Default branch: `main`
 
@@ -128,7 +128,7 @@ The health endpoint is available at:
 All credentials are fictitious and local-only. They must never be reused as
 real credentials.
 
-## GitLab
+## GitHub
 
 Configure the Git identity if needed:
 
@@ -141,7 +141,7 @@ git push origin main
 The configured remote is:
 
 ```text
-https://gitlab.com/rayen.dabbabi/securedesk.git
+https://github.com/Dabbabi-Rayen/securedesk.git
 ```
 
 ## Run with Docker
@@ -165,12 +165,9 @@ directory separately so the application filesystem can remain read-only.
 
 ## CI/CD security pipeline
 
-GitLab CI was prepared in [.gitlab-ci.yml](./.gitlab-ci.yml), but GitLab
-pipeline execution is currently blocked by account identity verification. The
-active alternative is GitHub Actions, defined in
-[.github/workflows/security.yml](./.github/workflows/security.yml).
-
-The GitHub workflow runs on pushes to `main`, pull requests, or manually from
+The GitHub Actions workflow is defined in
+[.github/workflows/security.yml](./.github/workflows/security.yml). It runs on
+pushes to `main`, pull requests, or manually from
 the Actions tab. It intentionally blocks on failed tests, SAST findings,
 detected secrets, high or critical dependency vulnerabilities, and high or
 critical image vulnerabilities.
