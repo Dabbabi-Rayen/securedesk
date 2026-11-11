@@ -188,14 +188,55 @@ The workflow only requests `contents: read` and uses the automatically
 provided `GITHUB_TOKEN`. No registry passwords or scanner credentials are
 required.
 
+## Kubernetes deployment
+
+The local Kubernetes manifests are in [k8s/](./k8s/). They use a single
+replica because the current application stores its SQLite database on a
+persistent volume.
+
+Build the image and create the local secret:
+
+```powershell
+docker build --target runtime --tag securedesk:local .
+kubectl apply -f k8s/namespace.yaml
+kubectl create secret generic securedesk-secrets `
+  --namespace securedesk `
+  --from-literal=SECRET_KEY="$(New-Guid)-securedesk-local" `
+  --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -k k8s/
+```
+
+`k8s/secret.example.yaml` is documentation only and is intentionally not
+included in the Kustomize resources. Never commit a real secret or apply the
+example value in a shared environment.
+
+For Minikube, load the image before applying the manifests:
+
+```powershell
+minikube image load securedesk:local
+```
+
+Check the deployment and access the app:
+
+```powershell
+kubectl -n securedesk get pods,svc,networkpolicy
+kubectl -n securedesk port-forward svc/securedesk 5000:5000
+```
+
+The deployment runs as UID 999, drops all Linux capabilities, disables
+privilege escalation, uses a read-only root filesystem, disables automatic
+service-account-token mounting, and applies default-deny ingress/egress
+network policies.
+
 ## DevSecOps roadmap
 
 1. Complete the Docker image and local Compose deployment.
 2. Run the GitHub Actions tests, SAST, secret scanning, dependency scanning,
    and image scanning jobs.
 3. Capture the initial security findings from the workflow.
-4. Deploy the application to a local Kubernetes cluster.
-5. Add restrictive security contexts and network policies.
+4. Deploy the application to a local Kubernetes cluster with the manifests in
+   `k8s/`.
+5. Verify restrictive security contexts and network policies.
 6. Demonstrate and then fix the five intentional vulnerabilities.
 7. Add safe structured logging, attack detection, and incident-response
    evidence.

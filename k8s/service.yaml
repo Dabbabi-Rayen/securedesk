@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: securedesk
+  namespace: securedesk
+  labels:
+    app.kubernetes.io/name: securedesk
+spec:
+  selector:
+    app.kubernetes.io/name: securedesk
+  ports:
+    - name: http
+      port: 5000
+      targetPort: http
+  type: ClusterIP

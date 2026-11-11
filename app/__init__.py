@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask, redirect, url_for
 
 from .auth import auth
@@ -9,8 +11,8 @@ from .web import web
 def create_app(test_config=None):
     app = Flask(__name__)
     app.config.from_mapping(
-        SECRET_KEY="dev-only-change-me",
-        DATABASE="instance/securedesk.sqlite",
+        SECRET_KEY=os.environ.get("SECRET_KEY", "dev-only-change-me"),
+        DATABASE=os.environ.get("DATABASE", "instance/securedesk.sqlite"),
         TESTING=False,
     )
 
