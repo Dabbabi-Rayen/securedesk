@@ -32,7 +32,11 @@ jobs:
       - name: Run tests
         env:
           PYTHONPATH: ${{ github.workspace }}
-        run: python -m pytest
+        working-directory: ${{ github.workspace }}
+        run: |
+          pwd
+          python -c "import sys; print(sys.path); import app; print(app.__file__)"
+          python -m pytest
 
   semgrep:
     name: Semgrep SAST
