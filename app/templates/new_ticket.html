@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}New ticket · Secure Desk{% endblock %}
+{% block content %}
+<section class="card form-card">
+  <a class="back" href="{{ url_for('web.dashboard') }}">← Back to tickets</a>
+  <p class="eyebrow">Support request</p>
+  <h1>Create a ticket</h1>
+  <p class="subheading">Tell us what is happening and our team will take it from there.</p>
+  <form method="post">
+    <label for="title">Title</label>
+    <input id="title" name="title" maxlength="160" required>
+    <label for="description">Describe the issue</label>
+    <textarea id="description" name="description" rows="8" required></textarea>
+    <div class="actions">
+      <a href="{{ url_for('web.dashboard') }}">Cancel</a>
+      <button type="submit">Create ticket</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Staff login · Secure Desk{% endblock %}
+{% block content %}
+<section class="card form-card auth-card">
+  <a class="back" href="{{ url_for('web.login') }}">← Client login</a>
+  <p class="eyebrow">Secure Desk team</p>
+  <h1>Staff sign in</h1>
+  <p class="subheading">Technicians and administrators manage requests here.</p>
+  <form method="post">
+    <label for="username">Staff username</label>
+    <input id="username" name="username" required autofocus placeholder="tech.demo or admin.demo">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" required>
+    <button class="full-button" type="submit">Enter staff desk <span>→</span></button>
+  </form>
+  <p class="hint">Demo staff: <code>tech.demo</code> / <code>tech123</code></p>
+</section>
+{% endblock %}

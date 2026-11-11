@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · Secure Desk{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">Overview</p>
+    <h1>Tickets</h1>
+    <p class="subheading">Track and resolve every customer request.</p>
+  </div>
+  <a class="button" href="{{ url_for('web.new_ticket') }}"><span>＋</span> New ticket</a>
+</div>
+<div class="summary-row">
+  <div class="summary-card"><span class="summary-icon purple">◈</span><div><strong>{{ tickets|length }}</strong><span>Total tickets</span></div></div>
+  <div class="summary-card"><span class="summary-icon green">✓</span><div><strong>{{ tickets|selectattr('status', 'equalto', 'open')|list|length }}</strong><span>Open requests</span></div></div>
+  <div class="summary-card"><span class="summary-icon orange">◷</span><div><strong>Fast</strong><span>Team response</span></div></div>
+</div>
+{% if tickets %}
+  <div class="section-label"><span>Recent activity</span><span>{{ tickets|length }} ticket{% if tickets|length != 1 %}s{% endif %}</span></div>
+  <section class="ticket-list">
+  {% for ticket in tickets %}
+    <a class="ticket-card" href="{{ url_for('web.ticket_detail', ticket_id=ticket['id']) }}">
+      <div>
+        <div class="ticket-title"><span class="ticket-id">#{{ ticket['id'] }}</span><h2>{{ ticket['title'] }}</h2></div>
+        <p>{{ ticket['description']|truncate(140) }}</p>
+        <small>Opened by {{ ticket['client_username'] }} · {{ ticket['created_at'] }}</small>
+      </div>
+      <div class="ticket-meta"><span class="status">{{ ticket['status'] }}</span><span class="arrow">→</span></div>
+    </a>
+  {% endfor %}
+  </section>
+{% else %}
+  <section class="card empty"><h2>No tickets yet</h2><p>Create the first support request.</p></section>
+{% endif %}
+{% endblock %}

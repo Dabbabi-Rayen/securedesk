@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Ticket #{{ ticket['id'] }} · Secure Desk{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('web.dashboard') }}">← Back to tickets</a>
+<section class="card ticket-detail">
+  <div class="detail-header">
+    <div><span class="ticket-id">Ticket #{{ ticket['id'] }}</span><h1>{{ ticket['title'] }}</h1></div>
+    <span class="status">{{ ticket['status'] }}</span>
+  </div>
+  <p class="description">{{ ticket['description'] }}</p>
+  <div class="detail-footer"><span class="avatar small">{{ ticket['client_username'][0]|upper }}</span><span>Opened by <strong>{{ ticket['client_username'] }}</strong></span><span>·</span><span>{{ ticket['created_at'] }}</span></div>
+</section>
+<section class="card">
+  <div class="section-heading"><div><p class="eyebrow">Communication</p><h2>Conversation</h2></div><span class="comment-count">{{ comments|length }} comment{% if comments|length != 1 %}s{% endif %}</span></div>
+  {% if comments %}
+    <div class="comments">
+    {% for comment in comments %}
+      <article class="comment">
+        <strong>{{ comment['author_username'] }}</strong>
+        <p>{{ comment['body'] }}</p>
+      </article>
+    {% endfor %}
+    </div>
+  {% else %}<p class="muted">No comments yet.</p>{% endif %}
+  <form method="post" class="comment-form">
+    <label for="body">Add a comment</label>
+    <textarea id="body" name="body" rows="4" required></textarea>
+    <button type="submit">Post comment</button>
+  </form>
+</section>
+{% endblock %}

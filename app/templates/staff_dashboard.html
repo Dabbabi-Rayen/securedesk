@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Staff desk · Secure Desk{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div><p class="eyebrow">Team workspace</p><h1>Staff desk</h1><p class="subheading">Review and respond to customer requests.</p></div>
+  <span class="role-badge">{{ user['role'] }}</span>
+</div>
+<div class="summary-row">
+  <div class="summary-card"><span class="summary-icon purple">◈</span><div><strong>{{ tickets|length }}</strong><span>All tickets</span></div></div>
+  <div class="summary-card"><span class="summary-icon green">♙</span><div><strong>{{ user_count }}</strong><span>Registered users</span></div></div>
+  <div class="summary-card"><span class="summary-icon orange">✓</span><div><strong>Active</strong><span>Support queue</span></div></div>
+</div>
+<div class="section-label"><span>Customer requests</span><span>{{ tickets|length }} total</span></div>
+<section class="ticket-list">
+{% for ticket in tickets %}
+  <a class="ticket-card" href="{{ url_for('web.ticket_detail', ticket_id=ticket['id']) }}">
+    <div><div class="ticket-title"><span class="ticket-id">#{{ ticket['id'] }}</span><h2>{{ ticket['title'] }}</h2></div><p>{{ ticket['description']|truncate(140) }}</p><small>Client: {{ ticket['client_username'] }} · {{ ticket['created_at'] }}</small></div>
+    <div class="ticket-meta"><span class="status">{{ ticket['status'] }}</span><span class="arrow">→</span></div>
+  </a>
+{% else %}<section class="card empty"><h2>No tickets yet</h2></section>{% endfor %}
+</section>
+{% endblock %}

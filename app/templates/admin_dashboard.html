@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Admin · Secure Desk{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('web.staff_dashboard') }}">← Staff desk</a>
+<div class="page-heading"><div><p class="eyebrow">Administration</p><h1>User directory</h1><p class="subheading">Review the roles registered in Secure Desk.</p></div></div>
+<section class="card user-table">
+  {% for account in users %}
+    <div class="user-row"><span class="avatar">{{ account['username'][0]|upper }}</span><div><strong>{{ account['username'] }}</strong><small>User ID #{{ account['id'] }}</small></div><span class="role-badge">{{ account['role'] }}</span></div>
+  {% endfor %}
+</section>
+{% endblock %}

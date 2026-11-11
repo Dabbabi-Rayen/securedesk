@@ -1,0 +1,45 @@
+{% extends "base.html" %} {% block title %}Sign in · Secure Desk{% endblock %}
+{% block content %}
+<section class="login-layout">
+  <div class="login-intro">
+    <span class="intro-badge">Support, simplified</span>
+    <h1>Resolve issues.<br /><em>Build trust.</em></h1>
+    <p>One calm, secure workspace for your clients and support team.</p>
+    <div class="intro-stats">
+      <span><strong>24/7</strong> support visibility</span>
+      <span><strong>3</strong> team roles</span>
+    </div>
+  </div>
+  <section class="card login-card">
+    <div class="login-heading">
+      <span class="login-icon">↗</span>
+      <p class="eyebrow">Secure workspace</p>
+      <h2>Sign in</h2>
+      <p class="muted">Enter your credentials to continue.</p>
+    </div>
+    <form method="post">
+      <label for="username">Username</label>
+      <input
+        id="username"
+        name="username"
+        placeholder="your.username"
+        required
+        autofocus
+      />
+      <label for="password">Password</label>
+      <input
+        id="password"
+        name="password"
+        type="password"
+        placeholder="••••••••"
+        required
+      />
+      <button class="full-button" type="submit">Continue <span>→</span></button>
+    </form>
+    <div class="login-links">
+      <a href="{{ url_for('web.signup') }}">New here? Create a client account</a>
+      <a href="{{ url_for('web.staff_login') }}">Staff and admin login →</a>
+    </div>
+  </section>
+</section>
+{% endblock %}
