@@ -30,7 +30,7 @@ jobs:
         run: python -m pip install -r requirements-dev.txt
 
       - name: Run tests
-        run: pytest
+        run: python -m pytest
 
   semgrep:
     name: Semgrep SAST
