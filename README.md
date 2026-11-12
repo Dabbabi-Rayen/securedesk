@@ -15,9 +15,13 @@ The application foundation is complete:
 - Ticket creation, listing, details, and comments.
 - JSON API for the same core ticket workflow.
 - Five intentional vulnerabilities reserved for the security phases.
+- Docker and Docker Compose deployment.
+- GitHub Actions security workflow.
+- Hardened Kubernetes deployment with persistent storage and network policies.
+- Initial public and authenticated DAST scans with OWASP ZAP.
 
-The next phases are Kubernetes deployment, DAST, logging, and remediation
-evidence.
+The remaining phases are targeted DAST validation, structured logging, incident
+response evidence, and vulnerability remediation.
 
 ## Repository
 
@@ -228,17 +232,37 @@ privilege escalation, uses a read-only root filesystem, disables automatic
 service-account-token mounting, mounts a memory-backed temporary directory for
 Gunicorn, and applies default-deny ingress/egress network policies.
 
+## DAST with OWASP ZAP
+
+OWASP ZAP Baseline scans were executed only against the local Kubernetes
+instance through a temporary port-forward. Two scans were performed:
+
+- An unauthenticated scan covering the public application pages.
+- An authenticated scan using a temporary local client session, covering the
+  client dashboard and ticket pages.
+
+The scans reported missing security headers and the absence of CSRF tokens.
+The authenticated scan discovered 16 URLs and reported 10 alert types,
+including:
+
+- Missing anti-CSRF tokens.
+- Missing Content Security Policy and anti-clickjacking headers.
+- Missing `X-Content-Type-Options` and Permissions Policy headers.
+- Missing or invalid Cross-Origin security headers.
+- A session cookie without `SameSite`.
+
+These results represent the initial, pre-remediation security baseline. The
+reports are generated locally and are intentionally excluded from Git because
+they may contain local URLs and session-related evidence. The remaining
+targeted DAST checks must validate the intentional IDOR, stored XSS, and SQL
+injection findings through their specific application and API workflows.
+
 ## DevSecOps roadmap
 
-1. Complete the Docker image and local Compose deployment.
-2. Run the GitHub Actions tests, SAST, secret scanning, dependency scanning,
-   and image scanning jobs.
-3. Capture the initial security findings from the workflow.
-4. Deploy the application to a local Kubernetes cluster with the manifests in
-   `k8s/`.
-5. Verify restrictive security contexts and network policies.
-6. Demonstrate and then fix the five intentional vulnerabilities.
-7. Add safe structured logging, attack detection, and incident-response
+1. Complete targeted DAST validation for IDOR, stored XSS, and SQL injection.
+2. Add safe structured logging, attack detection, and incident-response
    evidence.
+3. Fix the five intentional vulnerabilities.
+4. Rerun the tests and security pipeline and document the before/after results.
 
 Only scan and test the local Secure Desk instance owned by the project team.
