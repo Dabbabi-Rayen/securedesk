@@ -41,6 +41,8 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /app/instance
+            - name: tmp
+              mountPath: /tmp
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -68,3 +70,6 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: securedesk-data
+        - name: tmp
+          emptyDir:
+            medium: Memory

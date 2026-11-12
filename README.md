@@ -225,8 +225,8 @@ kubectl -n securedesk port-forward svc/securedesk 5000:5000
 
 The deployment runs as UID 999, drops all Linux capabilities, disables
 privilege escalation, uses a read-only root filesystem, disables automatic
-service-account-token mounting, and applies default-deny ingress/egress
-network policies.
+service-account-token mounting, mounts a memory-backed temporary directory for
+Gunicorn, and applies default-deny ingress/egress network policies.
 
 ## DevSecOps roadmap
 
