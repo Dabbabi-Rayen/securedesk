@@ -19,9 +19,10 @@ The application foundation is complete:
 - GitHub Actions security workflow.
 - Hardened Kubernetes deployment with persistent storage and network policies.
 - Initial public and authenticated DAST scans with OWASP ZAP.
+- IDOR remediation in the application source with regression tests.
 
-The remaining phases are targeted DAST validation, structured logging, incident
-response evidence, and vulnerability remediation.
+The remaining phases are structured logging, incident-response evidence, and
+remediation of the other intentional findings.
 
 ## Repository
 
@@ -53,11 +54,10 @@ Default branch: `main`
 
 ## Deliberate security findings for the project
 
-The current training version intentionally contains five findings that will be
-detected and fixed during the DevSecOps phases:
+The initial training version contained five findings for the DevSecOps phases.
+The IDOR finding has now been remediated in the source code and is covered by
+regression tests. The remaining training findings are:
 
-- **IDOR / broken object-level authorization:** an authenticated user can read
-  another client's ticket by changing the ticket ID.
 - **Stored XSS:** a comment is rendered without escaping on the HTML ticket
   view.
 - **SQL injection:** the ticket search query interpolates the `q` parameter.
@@ -67,7 +67,6 @@ detected and fixed during the DevSecOps phases:
 
 | Finding | OWASP category | Demonstration endpoint |
 | --- | --- | --- |
-| IDOR | A01 Broken Access Control | `GET /api/tickets/<id>` |
 | Stored XSS | A03 Injection | `GET /api/tickets/<id>/view` |
 | SQL injection | A03 Injection | `GET /api/tickets/search?q=...` |
 | Hardcoded secret | A05 Security Misconfiguration | Application configuration |
@@ -254,8 +253,9 @@ including:
 These results represent the initial, pre-remediation security baseline. The
 reports are generated locally and are intentionally excluded from Git because
 they may contain local URLs and session-related evidence. The remaining
-targeted DAST checks must validate the intentional IDOR, stored XSS, and SQL
-injection findings through their specific application and API workflows.
+targeted DAST checks confirmed the baseline IDOR, stored XSS, and SQL
+injection findings. The IDOR fix must be rebuilt and redeployed before the
+authenticated check is repeated as an after-remediation test.
 
 ### Reproduce the public ZAP scan
 
@@ -391,9 +391,10 @@ as local evidence until the environment is reset.
 
 ## DevSecOps roadmap
 
-1. Add safe structured logging, attack detection, and incident-response
+1. Rebuild and redeploy the IDOR fix, then repeat its targeted DAST check.
+2. Add safe structured logging, attack detection, and incident-response
    evidence.
-2. Fix the five intentional vulnerabilities.
-3. Rerun the tests and security pipeline and document the before/after results.
+3. Fix the remaining intentional vulnerabilities.
+4. Rerun the tests and security pipeline and document the before/after results.
 
 Only scan and test the local Secure Desk instance owned by the project team.

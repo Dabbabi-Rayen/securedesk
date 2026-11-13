@@ -113,7 +113,7 @@ def test_authenticated_user_can_add_comment(tmp_path):
     assert response.get_json()["body"] == "Please restart the router."
 
 
-def test_current_demo_keeps_cross_client_access_for_security_testing(tmp_path):
+def test_client_cannot_access_another_clients_ticket(tmp_path):
     client = make_client(tmp_path)
     login(client)
     ticket = client.post(
@@ -122,12 +122,36 @@ def test_current_demo_keeps_cross_client_access_for_security_testing(tmp_path):
     ).get_json()
 
     other_client = make_client(tmp_path)
-    login(other_client, "tech.demo", "tech123")
+    other_client.post(
+        "/signup",
+        data={
+            "username": "another.client",
+            "password": "another123",
+            "confirmation": "another123",
+        },
+    )
 
     response = other_client.get(f"/api/tickets/{ticket['id']}")
 
+    assert response.status_code == 404
+    assert response.get_json() == {"error": "ticket not found"}
+
+
+def test_staff_can_access_client_ticket(tmp_path):
+    client = make_client(tmp_path)
+    login(client)
+    ticket = client.post(
+        "/api/tickets",
+        json={"title": "Support issue", "description": "Needs staff access."},
+    ).get_json()
+
+    technician = make_client(tmp_path)
+    login(technician, "tech.demo", "tech123")
+
+    response = technician.get(f"/api/tickets/{ticket['id']}")
+
     assert response.status_code == 200
-    assert response.get_json()["title"] == "Private issue"
+    assert response.get_json()["title"] == "Support issue"
 
 
 def test_current_demo_renders_comment_markup_for_security_testing(tmp_path):

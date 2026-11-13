@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, Response
 
-from .auth import current_user, login_required
+from .auth import can_access_ticket, current_user, login_required
 from .db import get_db
 
 
@@ -61,6 +61,8 @@ def get_ticket(ticket_id):
     ).fetchone()
     if ticket is None:
         return jsonify({"error": "ticket not found"}), 404
+    if not can_access_ticket(ticket):
+        return jsonify({"error": "ticket not found"}), 404
     return jsonify(serialize_ticket(ticket))
 
 
@@ -72,9 +74,11 @@ def add_comment(ticket_id):
     if not body:
         return jsonify({"error": "comment body is required"}), 400
     ticket = get_db().execute(
-        "SELECT id FROM tickets WHERE id = ?", (ticket_id,)
+        "SELECT id, client_id FROM tickets WHERE id = ?", (ticket_id,)
     ).fetchone()
     if ticket is None:
+        return jsonify({"error": "ticket not found"}), 404
+    if not can_access_ticket(ticket):
         return jsonify({"error": "ticket not found"}), 404
     database = get_db()
     cursor = database.execute(
@@ -95,6 +99,8 @@ def view_ticket(ticket_id):
         "SELECT * FROM tickets WHERE id = ?", (ticket_id,)
     ).fetchone()
     if ticket is None:
+        return jsonify({"error": "ticket not found"}), 404
+    if not can_access_ticket(ticket):
         return jsonify({"error": "ticket not found"}), 404
     comments = get_db().execute(
         "SELECT body FROM comments WHERE ticket_id = ? ORDER BY id", (ticket_id,)

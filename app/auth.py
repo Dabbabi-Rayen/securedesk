@@ -18,6 +18,14 @@ def current_user():
     ).fetchone()
 
 
+def can_access_ticket(ticket, user=None):
+    user = user or current_user()
+    return user is not None and (
+        user["role"] in ("technician", "admin")
+        or ticket["client_id"] == user["id"]
+    )
+
+
 def login_required(view):
     @wraps(view)
     def wrapped(*args, **kwargs):

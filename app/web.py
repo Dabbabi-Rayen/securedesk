@@ -4,7 +4,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 from werkzeug.security import check_password_hash
 from werkzeug.security import generate_password_hash
 
-from .auth import current_user
+from .auth import can_access_ticket, current_user
 from .db import get_db
 
 
@@ -196,6 +196,8 @@ def ticket_detail(ticket_id):
         (ticket_id,),
     ).fetchone()
     if ticket is None:
+        return "Ticket not found", 404
+    if not can_access_ticket(ticket):
         return "Ticket not found", 404
 
     if request.method == "POST":
