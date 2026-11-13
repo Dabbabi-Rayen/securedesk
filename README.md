@@ -356,6 +356,39 @@ GET http://127.0.0.1:5050/api/tickets/<ticket-id>
 Before remediation, an HTTP `200` response containing the ticket confirms the
 IDOR finding.
 
+To reproduce the browser-visible **before** state without changing the main
+working tree, use the commit immediately before the IDOR fix
+(`dc11ea2`) in a temporary Git worktree:
+
+```powershell
+cd C:\Users\alhab\Desktop\9raya\Devsecops
+git worktree add ..\securedesk-before-idor dc11ea2
+cd ..\securedesk-before-idor
+docker build --target runtime --tag securedesk:idor-before .
+kubectl -n securedesk set image deployment/securedesk securedesk=securedesk:idor-before
+kubectl -n securedesk rollout status deployment/securedesk
+kubectl -n securedesk port-forward svc/securedesk 5050:5000
+```
+
+In the browser, log in as `client.demo`, create a ticket, and note its ID.
+Log out, sign in as another client, and open
+`http://127.0.0.1:5050/tickets/<ticket-id>`. The vulnerable version displays
+the first client's ticket. Capture this result as `12-idor-before.png`.
+
+Stop the port-forward with `Ctrl+C`, rebuild the current corrected source, and
+restore the deployment:
+
+```powershell
+cd C:\Users\alhab\Desktop\9raya\Devsecops
+docker build --target runtime --tag securedesk:idor-fix .
+kubectl -n securedesk set image deployment/securedesk securedesk=securedesk:idor-fix
+kubectl -n securedesk rollout status deployment/securedesk
+git worktree remove ..\securedesk-before-idor
+```
+
+Repeat the browser request with a second client. The corrected version returns
+`Ticket not found` (HTTP `404`); capture it as `13-idor-after.png`.
+
 5. Add this harmless training marker as a comment:
 
 ```html
