@@ -21,6 +21,7 @@ The application foundation is complete:
 - Initial public and authenticated DAST scans with OWASP ZAP.
 - IDOR remediation in the application source with regression tests.
 - Stored XSS remediation in the HTML ticket view with regression tests.
+- SQL injection remediation with parameterized ticket search queries.
 
 The remaining phases are structured logging, incident-response evidence, and
 remediation of the remaining intentional findings.
@@ -56,17 +57,16 @@ Default branch: `main`
 ## Deliberate security findings for the project
 
 The initial training version contained five findings for the DevSecOps phases.
-The IDOR and stored XSS findings have now been remediated in the source code
-and are covered by regression tests. The remaining training findings are:
+The IDOR, stored XSS, and SQL injection findings have now been remediated in
+the source code and are covered by regression tests. The remaining training
+findings are:
 
-- **SQL injection:** the ticket search query interpolates the `q` parameter.
 - **Hardcoded secret:** the Flask `SECRET_KEY` uses a committed fallback value.
 - **Missing CSRF protection:** authenticated state-changing requests do not
   require a CSRF token.
 
 | Finding | OWASP category | Demonstration endpoint |
 | --- | --- | --- |
-| SQL injection | A03 Injection | `GET /api/tickets/search?q=...` |
 | Hardcoded secret | A05 Security Misconfiguration | Application configuration |
 | Missing CSRF | A05 Security Misconfiguration | `POST /api/tickets` |
 
@@ -252,8 +252,8 @@ These results represent the initial, pre-remediation security baseline. The
 reports are generated locally and are intentionally excluded from Git because
 they may contain local URLs and session-related evidence. The remaining
 targeted DAST checks confirmed the baseline IDOR, stored XSS, and SQL
-injection findings. The IDOR and stored XSS fixes were rebuilt, redeployed,
-and verified with after-remediation checks.
+injection findings. All three fixes were rebuilt, redeployed, and verified with
+after-remediation checks.
 
 ### Reproduce the public ZAP scan
 
@@ -416,6 +416,10 @@ GET /api/tickets/search?q=' OR 1=1 --
 Before remediation, returning all available tickets instead of only matching
 records confirms the SQL injection finding.
 
+After the SQL injection remediation, the same request must be treated as a
+literal search value and return an empty list (`[]`). Capture this result as
+`17-sqli-after.png`.
+
 The hardcoded secret is validated by Semgrep/Gitleaks and source inspection,
 not by a browser DAST request. The missing CSRF protection is visible in the
 ZAP alert `10202` and can also be checked by submitting a state-changing
@@ -428,7 +432,7 @@ as local evidence until the environment is reset.
 ## DevSecOps roadmap
 
 1. Complete targeted after-remediation checks for IDOR and stored XSS.
-2. Fix the remaining SQL injection, CSRF, and hardcoded-secret findings.
+2. Fix the remaining CSRF and hardcoded-secret findings.
 3. Add safe structured logging, attack detection, and incident-response
    evidence.
 4. Rerun the tests and security pipeline and document the before/after results.

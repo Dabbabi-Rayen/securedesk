@@ -173,7 +173,7 @@ def test_ticket_view_escapes_comment_markup(tmp_path):
     assert b"&lt;script&gt;alert(&#39;demo&#39;)&lt;/script&gt;" in response.data
 
 
-def test_current_demo_search_is_vulnerable_to_sql_injection(tmp_path):
+def test_ticket_search_treats_sql_payload_as_literal_text(tmp_path):
     client = make_client(tmp_path)
     login(client)
     client.post(
@@ -181,10 +181,12 @@ def test_current_demo_search_is_vulnerable_to_sql_injection(tmp_path):
         json={"title": "Private ticket", "description": "Internal details."},
     )
 
+    normal_response = client.get("/api/tickets/search?q=Private")
     response = client.get("/api/tickets/search?q=%27%20OR%201%3D1%20--")
 
     assert response.status_code == 200
-    assert len(response.get_json()) == 1
+    assert len(normal_response.get_json()) == 1
+    assert response.get_json() == []
 
 
 def test_current_demo_accepts_state_change_without_csrf_token(tmp_path):

@@ -47,9 +47,11 @@ def list_tickets():
 @login_required
 def search_tickets():
     query = request.args.get("q", "")
+    pattern = f"%{query}%"
     rows = get_db().execute(
-        f"SELECT * FROM tickets WHERE title LIKE '%{query}%' "
-        "OR description LIKE '%{query}%' ORDER BY id DESC"
+        "SELECT * FROM tickets WHERE title LIKE ? "
+        "OR description LIKE ? ORDER BY id DESC",
+        (pattern, pattern),
     ).fetchall()
     return jsonify([serialize_ticket(ticket) for ticket in rows])
 
