@@ -24,6 +24,7 @@
         <a class="nav-link" href="{{ url_for('web.admin_dashboard') }}">Admin</a>
       {% endif %}
       <form method="post" action="{{ url_for('web.logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button class="link-button" type="submit">Log out</button>
       </form>
     {% endif %}

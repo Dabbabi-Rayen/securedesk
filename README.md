@@ -57,18 +57,15 @@ Default branch: `main`
 ## Deliberate security findings for the project
 
 The initial training version contained five findings for the DevSecOps phases.
-The IDOR, stored XSS, and SQL injection findings have now been remediated in
-the source code and are covered by regression tests. The remaining training
-findings are:
+The IDOR, stored XSS, SQL injection, and CSRF findings have now been
+remediated in the source code and are covered by regression tests. The
+remaining training finding is:
 
 - **Hardcoded secret:** the Flask `SECRET_KEY` uses a committed fallback value.
-- **Missing CSRF protection:** authenticated state-changing requests do not
-  require a CSRF token.
 
 | Finding | OWASP category | Demonstration endpoint |
 | --- | --- | --- |
 | Hardcoded secret | A05 Security Misconfiguration | Application configuration |
-| Missing CSRF | A05 Security Misconfiguration | `POST /api/tickets` |
 
 These are fictitious findings on the local Secure Desk application only. They
 must not be tested against any third-party system.
@@ -150,6 +147,7 @@ https://github.com/Dabbabi-Rayen/securedesk.git
 Build and start the container:
 
 ```powershell
+$env:SECRET_KEY = (New-Guid).Guid + "-securedesk-local"
 docker compose up --build
 ```
 
@@ -173,10 +171,10 @@ the Actions tab. It intentionally blocks on failed tests, SAST findings,
 detected secrets, high or critical dependency vulnerabilities, and high or
 critical image vulnerabilities.
 
-The current training version is expected to fail security jobs because the
-five findings are intentionally present. The failure is part of the evidence:
-we will capture the results, remediate the application, and require the
-pipeline to pass afterward.
+The initial training version was expected to fail security jobs because five
+findings were intentionally present. Four application findings are now
+remediated; the hardcoded-secret finding remains until configuration is
+completed. The final goal is a passing pipeline after that remediation.
 
 ### GitHub setup
 
@@ -299,12 +297,33 @@ session cookie into the repository or into a shared command history. The
 session can be created through the web login:
 
 ```powershell
+$session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+$loginPage = Invoke-WebRequest `
+  -Uri http://127.0.0.1:5050/login `
+  -WebSession $session
+$csrf = [regex]::Match(
+  $loginPage.Content,
+  'name="csrf_token" value="([^"]+)"'
+).Groups[1].Value
+Invoke-WebRequest `
+  -Uri http://127.0.0.1:5050/login `
+  -Method Post `
+  -WebSession $session `
+  -Body @{
+    username = "client.demo"
+    password = "client123"
+    csrf_token = $csrf
+} | Out-Null
+```
+
+Export the temporary session cookie for the Docker scan:
+
+```powershell
 $cookiePath = Join-Path $env:TEMP "securedesk-zap-cookie.txt"
-curl.exe -sS -L `
-  -c $cookiePath `
-  -o NUL `
-  -d "username=client.demo&password=client123" `
-  http://127.0.0.1:5050/login
+$session.Cookies.GetCookies("http://127.0.0.1:5050") |
+  ForEach-Object { "session=$($_.Value)" } |
+  Set-Content -Path $cookiePath
+$sessionCookie = (Get-Content $cookiePath -Raw).Trim()
 ```
 
 The cookie can be supplied to ZAP with a temporary Replacer rule for the
@@ -420,10 +439,40 @@ After the SQL injection remediation, the same request must be treated as a
 literal search value and return an empty list (`[]`). Capture this result as
 `17-sqli-after.png`.
 
-The hardcoded secret is validated by Semgrep/Gitleaks and source inspection,
-not by a browser DAST request. The missing CSRF protection is visible in the
-ZAP alert `10202` and can also be checked by submitting a state-changing
-request without a CSRF token.
+### CSRF protection
+
+State-changing web forms (`/login`, `/signup`, `/staff/login`, ticket
+creation, comments, and logout) include a session-bound hidden token. API
+state-changing requests require the same token in the `X-CSRF-Token` header or
+in the JSON body. After API login, retrieve the token with:
+
+```powershell
+$csrf = (Invoke-RestMethod `
+  -Uri http://127.0.0.1:5050/api/auth/csrf `
+  -WebSession $session).csrf_token
+```
+
+Send it with an API mutation:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:5050/api/tickets `
+  -Method Post `
+  -WebSession $session `
+  -Headers @{ "X-CSRF-Token" = $csrf } `
+  -ContentType "application/json" `
+  -Body '{"title":"VPN issue","description":"The connection fails."}'
+```
+
+For evidence, repeat the request without the header. The deployed application
+must return HTTP `403` with `{"error":"csrf token required"}`. Capture that
+response as `18-csrf-after.png`.
+
+The former hardcoded secret was validated by Semgrep/Gitleaks and source
+inspection, not by a browser DAST request. The application now refuses to
+start in production when `SECRET_KEY` is missing. The missing CSRF protection
+was visible in the initial ZAP alert `10202`; rerun the authenticated scan
+after deploying the fix to confirm the CSRF alert is gone.
 
 After testing, stop the port-forward with `Ctrl+C`. The test tickets and
 comments are stored in the Kubernetes SQLite PVC and are intentionally kept
@@ -431,8 +480,9 @@ as local evidence until the environment is reset.
 
 ## DevSecOps roadmap
 
-1. Complete targeted after-remediation checks for IDOR and stored XSS.
-2. Fix the remaining CSRF and hardcoded-secret findings.
+1. Complete targeted after-remediation checks for IDOR, stored XSS, SQL
+   injection, and CSRF.
+2. Fix the remaining hardcoded-secret finding.
 3. Add safe structured logging, attack detection, and incident-response
    evidence.
 4. Rerun the tests and security pipeline and document the before/after results.

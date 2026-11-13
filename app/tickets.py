@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request, Response
 from markupsafe import escape
 
-from .auth import can_access_ticket, current_user, login_required
+from .auth import can_access_ticket, csrf_protected, current_user, login_required
 from .db import get_db
 
 
@@ -14,6 +14,7 @@ def serialize_ticket(ticket):
 
 @tickets.post("")
 @login_required
+@csrf_protected
 def create_ticket():
     payload = request.get_json(silent=True) or {}
     title = payload.get("title", "").strip()
@@ -71,6 +72,7 @@ def get_ticket(ticket_id):
 
 @tickets.post("/<int:ticket_id>/comments")
 @login_required
+@csrf_protected
 def add_comment(ticket_id):
     payload = request.get_json(silent=True) or {}
     body = payload.get("body", "").strip()

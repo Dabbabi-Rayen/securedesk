@@ -1,3 +1,5 @@
+import hmac
+import secrets
 from functools import wraps
 
 from flask import Blueprint, jsonify, request, session
@@ -7,6 +9,35 @@ from .db import get_db
 
 
 auth = Blueprint("auth", __name__, url_prefix="/api/auth")
+
+
+def ensure_csrf_token():
+    token = session.get("_csrf_token")
+    if token is None:
+        token = secrets.token_urlsafe(32)
+        session["_csrf_token"] = token
+    return token
+
+
+def csrf_protected(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if request.method in ("GET", "HEAD", "OPTIONS"):
+            return view(*args, **kwargs)
+        payload = request.get_json(silent=True) or {}
+        supplied = (
+            request.form.get("csrf_token")
+            or request.headers.get("X-CSRF-Token")
+            or payload.get("csrf_token")
+        )
+        expected = session.get("_csrf_token")
+        if not expected or not supplied or not hmac.compare_digest(supplied, expected):
+            if request.is_json:
+                return jsonify({"error": "csrf token required"}), 403
+            return "CSRF token required", 403
+        return view(*args, **kwargs)
+
+    return wrapped
 
 
 def current_user():
@@ -48,6 +79,7 @@ def login():
         return jsonify({"error": "invalid credentials"}), 401
     session.clear()
     session["user_id"] = user["id"]
+    ensure_csrf_token()
     return jsonify({"id": user["id"], "username": user["username"], "role": user["role"]})
 
 
@@ -62,3 +94,9 @@ def logout():
 def me():
     user = current_user()
     return jsonify(dict(user))
+
+
+@auth.get("/csrf")
+@login_required
+def csrf():
+    return jsonify({"csrf_token": ensure_csrf_token()})

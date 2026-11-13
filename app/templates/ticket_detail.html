@@ -23,6 +23,7 @@
     </div>
   {% else %}<p class="muted">No comments yet.</p>{% endif %}
   <form method="post" class="comment-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label for="body">Add a comment</label>
     <textarea id="body" name="body" rows="4" required></textarea>
     <button type="submit">Post comment</button>

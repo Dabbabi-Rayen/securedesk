@@ -4,7 +4,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 from werkzeug.security import check_password_hash
 from werkzeug.security import generate_password_hash
 
-from .auth import can_access_ticket, current_user
+from .auth import can_access_ticket, csrf_protected, current_user, ensure_csrf_token
 from .db import get_db
 
 
@@ -50,6 +50,7 @@ def admin_required(view):
 
 
 @web.route("/login", methods=("GET", "POST"))
+@csrf_protected
 def login():
     if request.method == "POST":
         user = get_db().execute(
@@ -61,12 +62,14 @@ def login():
         ):
             session.clear()
             session["user_id"] = user["id"]
+            ensure_csrf_token()
             return redirect(url_for("web.dashboard"))
         flash("Invalid username or password.", "error")
     return render_template("login.html")
 
 
 @web.route("/signup", methods=("GET", "POST"))
+@csrf_protected
 def signup():
     if request.method == "POST":
         username = request.form.get("username", "").strip()
@@ -92,11 +95,13 @@ def signup():
             else:
                 session.clear()
                 session["user_id"] = cursor.lastrowid
+                ensure_csrf_token()
                 return redirect(url_for("web.dashboard"))
     return render_template("signup.html")
 
 
 @web.route("/staff/login", methods=("GET", "POST"))
+@csrf_protected
 def staff_login():
     if request.method == "POST":
         user = get_db().execute(
@@ -108,12 +113,14 @@ def staff_login():
         ):
             session.clear()
             session["user_id"] = user["id"]
+            ensure_csrf_token()
             return redirect(url_for("web.staff_dashboard"))
         flash("Invalid staff credentials.", "error")
     return render_template("staff_login.html")
 
 
 @web.post("/logout")
+@csrf_protected
 def logout():
     session.clear()
     return redirect(url_for("web.login"))
@@ -166,6 +173,7 @@ def admin_dashboard():
 
 @web.route("/tickets/new", methods=("GET", "POST"))
 @web_login_required
+@csrf_protected
 def new_ticket():
     if request.method == "POST":
         title = request.form.get("title", "").strip()
@@ -185,6 +193,7 @@ def new_ticket():
 
 @web.route("/tickets/<int:ticket_id>", methods=("GET", "POST"))
 @web_login_required
+@csrf_protected
 def ticket_detail(ticket_id):
     database = get_db()
     ticket = database.execute(
