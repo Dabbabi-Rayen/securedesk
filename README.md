@@ -257,12 +257,143 @@ they may contain local URLs and session-related evidence. The remaining
 targeted DAST checks must validate the intentional IDOR, stored XSS, and SQL
 injection findings through their specific application and API workflows.
 
+### Reproduce the public ZAP scan
+
+Start the local port-forward in one terminal and leave it running:
+
+```powershell
+kubectl -n securedesk port-forward svc/securedesk 5050:5000
+```
+
+In another terminal, verify the application:
+
+```powershell
+curl.exe http://127.0.0.1:5050/health
+```
+
+The expected response is:
+
+```json
+{"status":"healthy"}
+```
+
+Run the ZAP Baseline scan from the repository root. Docker Desktop is required:
+
+```powershell
+$workspace = (Get-Location).Path
+docker run --rm `
+  -v "${workspace}:/zap/wrk/:rw" `
+  -t zaproxy/zap-stable `
+  zap-baseline.py `
+  -t http://host.docker.internal:5050 `
+  -r zap-baseline.html `
+  -J zap-baseline.json `
+  -I
+```
+
+The HTML and JSON reports are local evidence only. They are excluded from Git.
+The first run downloads the ZAP image and can take several minutes.
+
+### Reproduce the authenticated scan
+
+The authenticated scan uses a temporary client session. Do not copy a real
+session cookie into the repository or into a shared command history. The
+session can be created through the web login:
+
+```powershell
+$cookiePath = Join-Path $env:TEMP "securedesk-zap-cookie.txt"
+curl.exe -sS -L `
+  -c $cookiePath `
+  -o NUL `
+  -d "username=client.demo&password=client123" `
+  http://127.0.0.1:5050/login
+```
+
+The cookie can be supplied to ZAP with a temporary Replacer rule for the
+`Cookie` request header. In the ZAP desktop interface, browse the application
+through the local proxy first, then include the local site in a context and
+run the spider and passive scan. For the Docker Baseline scan, provide the
+temporary value as a replacement in the command below:
+
+```powershell
+$sessionCookie = "<temporary-session-cookie-value>"
+$workspace = (Get-Location).Path
+docker run --rm `
+  -v "${workspace}:/zap/wrk/:rw" `
+  -t zaproxy/zap-stable `
+  zap-baseline.py `
+  -t http://host.docker.internal:5050/dashboard `
+  -r zap-authenticated.html `
+  -J zap-authenticated.json `
+  -I `
+  -z "-config replacer.full_list(0).description=client-session -config replacer.full_list(0).enabled=true -config replacer.full_list(0).matchtype=REQ_HEADER -config replacer.full_list(0).matchstr=Cookie -config replacer.full_list(0).regex=false -config replacer.full_list(0).replacement=session=$sessionCookie"
+```
+
+Afterward, remove the temporary cookie:
+
+```powershell
+Remove-Item $cookiePath -Force -ErrorAction SilentlyContinue
+```
+
+The authenticated scan should discover the client dashboard and ticket pages,
+including `/dashboard`, `/tickets/<id>`, and `/tickets/new`.
+
+### Reproduce the targeted vulnerability checks
+
+These checks are deliberately performed only against the local Secure Desk
+instance. They use the normal web forms for authentication and test data, then
+read the API responses with the resulting local session.
+
+1. Start the port-forward shown above.
+2. Log in locally as `client.demo` and `tech.demo`.
+3. As the client, create a test ticket and record its numeric ID.
+4. As the technician, request the client's ticket:
+
+```text
+GET http://127.0.0.1:5050/api/tickets/<ticket-id>
+```
+
+Before remediation, an HTTP `200` response containing the ticket confirms the
+IDOR finding.
+
+5. Add this harmless training marker as a comment:
+
+```html
+<script>alert("DAST-XSS")</script>
+```
+
+Then open:
+
+```text
+GET http://127.0.0.1:5050/api/tickets/<ticket-id>/view
+```
+
+Before remediation, the raw `<script>` element in the response confirms the
+stored XSS finding.
+
+6. With an authenticated session, search with this local test value:
+
+```text
+GET /api/tickets/search?q=' OR 1=1 --
+```
+
+Before remediation, returning all available tickets instead of only matching
+records confirms the SQL injection finding.
+
+The hardcoded secret is validated by Semgrep/Gitleaks and source inspection,
+not by a browser DAST request. The missing CSRF protection is visible in the
+ZAP alert `10202` and can also be checked by submitting a state-changing
+request without a CSRF token.
+
+After testing, stop the port-forward with `Ctrl+C`. The test tickets and
+comments are stored in the Kubernetes SQLite PVC and are intentionally kept
+as local evidence until the environment is reset.
+
 ## DevSecOps roadmap
 
-1. Complete targeted DAST validation for IDOR, stored XSS, and SQL injection.
-2. Add safe structured logging, attack detection, and incident-response
+1. Add safe structured logging, attack detection, and incident-response
    evidence.
-3. Fix the five intentional vulnerabilities.
-4. Rerun the tests and security pipeline and document the before/after results.
+2. Fix the five intentional vulnerabilities.
+3. Rerun the tests and security pipeline and document the before/after results.
 
 Only scan and test the local Secure Desk instance owned by the project team.
