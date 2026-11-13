@@ -20,9 +20,10 @@ The application foundation is complete:
 - Hardened Kubernetes deployment with persistent storage and network policies.
 - Initial public and authenticated DAST scans with OWASP ZAP.
 - IDOR remediation in the application source with regression tests.
+- Stored XSS remediation in the HTML ticket view with regression tests.
 
 The remaining phases are structured logging, incident-response evidence, and
-remediation of the other intentional findings.
+remediation of the remaining intentional findings.
 
 ## Repository
 
@@ -55,11 +56,9 @@ Default branch: `main`
 ## Deliberate security findings for the project
 
 The initial training version contained five findings for the DevSecOps phases.
-The IDOR finding has now been remediated in the source code and is covered by
-regression tests. The remaining training findings are:
+The IDOR and stored XSS findings have now been remediated in the source code
+and are covered by regression tests. The remaining training findings are:
 
-- **Stored XSS:** a comment is rendered without escaping on the HTML ticket
-  view.
 - **SQL injection:** the ticket search query interpolates the `q` parameter.
 - **Hardcoded secret:** the Flask `SECRET_KEY` uses a committed fallback value.
 - **Missing CSRF protection:** authenticated state-changing requests do not
@@ -67,7 +66,6 @@ regression tests. The remaining training findings are:
 
 | Finding | OWASP category | Demonstration endpoint |
 | --- | --- | --- |
-| Stored XSS | A03 Injection | `GET /api/tickets/<id>/view` |
 | SQL injection | A03 Injection | `GET /api/tickets/search?q=...` |
 | Hardcoded secret | A05 Security Misconfiguration | Application configuration |
 | Missing CSRF | A05 Security Misconfiguration | `POST /api/tickets` |
@@ -254,8 +252,8 @@ These results represent the initial, pre-remediation security baseline. The
 reports are generated locally and are intentionally excluded from Git because
 they may contain local URLs and session-related evidence. The remaining
 targeted DAST checks confirmed the baseline IDOR, stored XSS, and SQL
-injection findings. The IDOR fix must be rebuilt and redeployed before the
-authenticated check is repeated as an after-remediation test.
+injection findings. The IDOR and stored XSS fixes were rebuilt, redeployed,
+and verified with after-remediation checks.
 
 ### Reproduce the public ZAP scan
 
@@ -389,7 +387,8 @@ git worktree remove ..\securedesk-before-idor
 Repeat the browser request with a second client. The corrected version returns
 `Ticket not found` (HTTP `404`); capture it as `13-idor-after.png`.
 
-5. Add this harmless training marker as a comment:
+5. Add this harmless training marker as a comment to reproduce the original
+   stored XSS finding:
 
 ```html
 <script>alert("DAST-XSS")</script>
@@ -403,6 +402,10 @@ GET http://127.0.0.1:5050/api/tickets/<ticket-id>/view
 
 Before remediation, the raw `<script>` element in the response confirms the
 stored XSS finding.
+
+After the XSS remediation, repeat the same request. The script must be
+displayed as escaped text and must not execute. Capture this result as
+`16-xss-after.png`.
 
 6. With an authenticated session, search with this local test value:
 
@@ -424,10 +427,10 @@ as local evidence until the environment is reset.
 
 ## DevSecOps roadmap
 
-1. Rebuild and redeploy the IDOR fix, then repeat its targeted DAST check.
-2. Add safe structured logging, attack detection, and incident-response
+1. Complete targeted after-remediation checks for IDOR and stored XSS.
+2. Fix the remaining SQL injection, CSRF, and hardcoded-secret findings.
+3. Add safe structured logging, attack detection, and incident-response
    evidence.
-3. Fix the remaining intentional vulnerabilities.
 4. Rerun the tests and security pipeline and document the before/after results.
 
 Only scan and test the local Secure Desk instance owned by the project team.

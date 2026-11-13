@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, request, Response
+from markupsafe import escape
 
 from .auth import can_access_ticket, current_user, login_required
 from .db import get_db
@@ -105,10 +106,12 @@ def view_ticket(ticket_id):
     comments = get_db().execute(
         "SELECT body FROM comments WHERE ticket_id = ? ORDER BY id", (ticket_id,)
     ).fetchall()
-    comment_html = "".join(f"<li>{comment['body']}</li>" for comment in comments)
+    comment_html = "".join(
+        f"<li>{escape(comment['body'])}</li>" for comment in comments
+    )
     html = (
-        f"<h1>{ticket['title']}</h1>"
-        f"<p>{ticket['description']}</p>"
+        f"<h1>{escape(ticket['title'])}</h1>"
+        f"<p>{escape(ticket['description'])}</p>"
         f"<ul>{comment_html}</ul>"
     )
     return Response(html, mimetype="text/html")

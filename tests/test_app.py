@@ -154,7 +154,7 @@ def test_staff_can_access_client_ticket(tmp_path):
     assert response.get_json()["title"] == "Support issue"
 
 
-def test_current_demo_renders_comment_markup_for_security_testing(tmp_path):
+def test_ticket_view_escapes_comment_markup(tmp_path):
     client = make_client(tmp_path)
     login(client)
     ticket = client.post(
@@ -169,7 +169,8 @@ def test_current_demo_renders_comment_markup_for_security_testing(tmp_path):
     response = client.get(f"/api/tickets/{ticket['id']}/view")
 
     assert response.status_code == 200
-    assert b"<script>alert('demo')</script>" in response.data
+    assert b"<script>alert('demo')</script>" not in response.data
+    assert b"&lt;script&gt;alert(&#39;demo&#39;)&lt;/script&gt;" in response.data
 
 
 def test_current_demo_search_is_vulnerable_to_sql_injection(tmp_path):
