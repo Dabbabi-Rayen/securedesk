@@ -4,12 +4,14 @@ from flask import Flask, redirect, url_for
 
 from .auth import auth, ensure_csrf_token
 from .db import close_db, init_db
+from .security_logging import configure_security_logging
 from .tickets import tickets
 from .web import web
 
 
 def create_app(test_config=None):
     app = Flask(__name__)
+    configure_security_logging()
     secret_key = os.environ.get("SECRET_KEY")
     if not secret_key and not (test_config and test_config.get("TESTING")):
         raise RuntimeError("SECRET_KEY must be configured")

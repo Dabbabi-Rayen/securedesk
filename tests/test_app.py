@@ -135,7 +135,7 @@ def test_authenticated_user_can_add_comment(tmp_path):
     assert response.get_json()["body"] == "Please restart the router."
 
 
-def test_client_cannot_access_another_clients_ticket(tmp_path):
+def test_client_cannot_access_another_clients_ticket(tmp_path, caplog):
     client = make_client(tmp_path)
     login(client)
     ticket = client.post(
@@ -160,6 +160,7 @@ def test_client_cannot_access_another_clients_ticket(tmp_path):
 
     assert response.status_code == 404
     assert response.get_json() == {"error": "ticket not found"}
+    assert any("ticket.access_denied" in record.message for record in caplog.records)
 
 
 def test_staff_can_access_client_ticket(tmp_path):
@@ -201,7 +202,7 @@ def test_ticket_view_escapes_comment_markup(tmp_path):
     assert b"&lt;script&gt;alert(&#39;demo&#39;)&lt;/script&gt;" in response.data
 
 
-def test_ticket_search_treats_sql_payload_as_literal_text(tmp_path):
+def test_ticket_search_treats_sql_payload_as_literal_text(tmp_path, caplog):
     client = make_client(tmp_path)
     login(client)
     client.post(
@@ -216,6 +217,9 @@ def test_ticket_search_treats_sql_payload_as_literal_text(tmp_path):
     assert response.status_code == 200
     assert len(normal_response.get_json()) == 1
     assert response.get_json() == []
+    assert any(
+        "ticket.search_suspicious" in record.message for record in caplog.records
+    )
 
 
 def test_state_change_requires_csrf_token(tmp_path):

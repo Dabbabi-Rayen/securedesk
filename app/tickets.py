@@ -1,8 +1,11 @@
+import re
+
 from flask import Blueprint, jsonify, request, Response
 from markupsafe import escape
 
 from .auth import can_access_ticket, csrf_protected, current_user, login_required
 from .db import get_db
+from .security_logging import log_security_event
 
 
 tickets = Blueprint("tickets", __name__, url_prefix="/api/tickets")
@@ -48,6 +51,12 @@ def list_tickets():
 @login_required
 def search_tickets():
     query = request.args.get("q", "")
+    if re.search(r"(?:--|/\*|\bunion\b|\bor\b.+=)", query, re.IGNORECASE):
+        log_security_event(
+            "ticket.search_suspicious",
+            query_length=len(query),
+            user_id=current_user()["id"],
+        )
     pattern = f"%{query}%"
     rows = get_db().execute(
         "SELECT * FROM tickets WHERE title LIKE ? "
@@ -66,6 +75,13 @@ def get_ticket(ticket_id):
     if ticket is None:
         return jsonify({"error": "ticket not found"}), 404
     if not can_access_ticket(ticket):
+        log_security_event(
+            "ticket.access_denied",
+            resource="ticket",
+            ticket_id=ticket_id,
+            user_id=current_user()["id"],
+            role=current_user()["role"],
+        )
         return jsonify({"error": "ticket not found"}), 404
     return jsonify(serialize_ticket(ticket))
 
@@ -84,6 +100,13 @@ def add_comment(ticket_id):
     if ticket is None:
         return jsonify({"error": "ticket not found"}), 404
     if not can_access_ticket(ticket):
+        log_security_event(
+            "ticket.comment_denied",
+            resource="ticket_comment",
+            ticket_id=ticket_id,
+            user_id=current_user()["id"],
+            role=current_user()["role"],
+        )
         return jsonify({"error": "ticket not found"}), 404
     database = get_db()
     cursor = database.execute(
@@ -106,6 +129,13 @@ def view_ticket(ticket_id):
     if ticket is None:
         return jsonify({"error": "ticket not found"}), 404
     if not can_access_ticket(ticket):
+        log_security_event(
+            "ticket.view_denied",
+            resource="ticket_view",
+            ticket_id=ticket_id,
+            user_id=current_user()["id"],
+            role=current_user()["role"],
+        )
         return jsonify({"error": "ticket not found"}), 404
     comments = get_db().execute(
         "SELECT body FROM comments WHERE ticket_id = ? ORDER BY id", (ticket_id,)

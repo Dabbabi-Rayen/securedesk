@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, request, session
 from werkzeug.security import check_password_hash
 
 from .db import get_db
+from .security_logging import log_security_event
 
 
 auth = Blueprint("auth", __name__, url_prefix="/api/auth")
@@ -32,6 +33,7 @@ def csrf_protected(view):
         )
         expected = session.get("_csrf_token")
         if not expected or not supplied or not hmac.compare_digest(supplied, expected):
+            log_security_event("csrf.rejected", reason="missing_or_invalid_token")
             if request.is_json:
                 return jsonify({"error": "csrf token required"}), 403
             return "CSRF token required", 403
@@ -76,10 +78,16 @@ def login():
     if user is None or not check_password_hash(
         user["password_hash"], payload.get("password", "")
     ):
+        log_security_event(
+            "auth.login_failed",
+            interface="api",
+            username_present=bool(payload.get("username")),
+        )
         return jsonify({"error": "invalid credentials"}), 401
     session.clear()
     session["user_id"] = user["id"]
     ensure_csrf_token()
+    log_security_event("auth.login_succeeded", interface="api", role=user["role"])
     return jsonify({"id": user["id"], "username": user["username"], "role": user["role"]})
 
 

@@ -22,7 +22,8 @@ The application foundation is complete:
 - Remediation of IDOR, stored XSS, SQL injection, CSRF, and secret
   configuration with regression tests.
 
-The remaining phase is structured logging and incident-response evidence.
+Structured security logging is now emitted to standard output. The remaining
+step is to demonstrate the logs and document the incident-response evidence.
 
 ## Repository
 
@@ -466,6 +467,49 @@ Invoke-RestMethod `
 For evidence, repeat the request without the header. The deployed application
 must return HTTP `403` with `{"error":"csrf token required"}`. Capture that
 response as `18-csrf-after.png`.
+
+## Security logging and incident response
+
+The application emits one-line JSON security events to standard output. The
+events do not include passwords, session cookies, CSRF values, or raw search
+payloads. Examples include:
+
+- `auth.login_failed` and `auth.login_succeeded`;
+- `csrf.rejected`;
+- `ticket.access_denied` and `ticket.view_denied`;
+- `ticket.comment_denied`;
+- `ticket.search_suspicious`.
+
+Deploy the final image and follow the pod logs:
+
+```powershell
+docker build --target runtime --tag securedesk:observability .
+kubectl -n securedesk set image deployment/securedesk securedesk=securedesk:observability
+kubectl -n securedesk rollout status deployment/securedesk
+kubectl -n securedesk logs deployment/securedesk --since=10m -f
+```
+
+For a fictitious attack demonstration, create a ticket as `client.demo`, then
+sign in as a different client and request the first client's ticket URL. The
+request must be denied, while the pod logs contain a JSON event with
+`"event": "ticket.access_denied"`. You can also search the local API as an
+authenticated client with:
+
+```text
+GET /api/tickets/search?q=' OR 1=1 --
+```
+
+The logs must contain `"event": "ticket.search_suspicious"` and only the
+query length, not the submitted query. Capture the terminal output containing
+one of these events as `20-security-log.png`.
+
+The incident-response sequence for the demonstration is:
+
+1. **Detect:** identify the structured security event and affected resource.
+2. **Contain:** block the session or isolate the affected pod if necessary.
+3. **Eradicate:** correct the access control or input handling defect.
+4. **Recover:** rebuild, scan, redeploy, and verify the health endpoint.
+5. **Lessons learned:** add a regression test and keep the event in the report.
 
 The former hardcoded secret was validated by Semgrep/Gitleaks and source
 inspection, not by a browser DAST request. The application now refuses to
