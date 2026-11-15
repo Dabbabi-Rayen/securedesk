@@ -7,7 +7,10 @@ WORKDIR /build
 COPY requirements.txt .
 RUN python -m venv /opt/venv \
     && /opt/venv/bin/pip install --upgrade pip setuptools \
-    && /opt/venv/bin/pip install -r requirements.txt
+    && /opt/venv/bin/pip install -r requirements.txt \
+    && rm -rf /opt/venv/bin/pip* \
+        /opt/venv/lib/python3.12/site-packages/pip* \
+        /opt/venv/lib/python3.12/site-packages/setuptools*
 
 FROM python:3.12-slim AS runtime
 
@@ -19,8 +22,9 @@ ENV PATH="/opt/venv/bin:$PATH" \
 RUN apt-get update \
     && apt-get upgrade -y \
     && rm -rf /var/lib/apt/lists/* \
-    && python -m pip install --no-cache-dir --upgrade pip setuptools \
-    && rm -rf /root/.cache \
+    && rm -rf /usr/local/bin/pip* \
+        /usr/local/lib/python3.12/site-packages/pip* \
+        /usr/local/lib/python3.12/site-packages/setuptools* \
     && groupadd --system app \
     && useradd --system --gid app --create-home app \
     && mkdir -p /app/instance \
