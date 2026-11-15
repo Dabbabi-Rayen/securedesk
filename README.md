@@ -24,6 +24,8 @@ The application foundation is complete:
 
 Structured security logging is now emitted to standard output. The remaining
 step is to demonstrate the logs and document the incident-response evidence.
+The DAST follow-up also hardened the HTTP security headers and session-cookie
+attributes.
 
 ## Repository
 
@@ -252,7 +254,16 @@ injection findings. All three fixes were rebuilt, redeployed, and verified with
 after-remediation checks. A later authenticated scan on
 `securedesk:security-fixes` reported `Absence of Anti-CSRF Tokens [10202]` as
 `PASS`, with 0 failures and 10 remaining warnings for security headers and
-cookie attributes.
+cookie attributes. These warnings were treated as an additional hardening
+opportunity rather than ignored.
+
+The application now adds CSP, anti-clickjacking, MIME-sniffing, Permissions
+Policy, Referrer Policy, Cross-Origin security headers, and an explicit
+`SameSite=Lax` session cookie. Re-run the authenticated scan after deploying
+the current image and capture the final ZAP summary as
+`21-zap-hardening-after.png`. Informational authentication and session
+management notices may remain; they describe observed behavior rather than a
+failed security control.
 
 ### Reproduce the public ZAP scan
 

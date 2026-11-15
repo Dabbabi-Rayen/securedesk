@@ -19,6 +19,8 @@ def create_app(test_config=None):
     app.config.from_mapping(
         SECRET_KEY=secret_key or "test-only-secret-key",
         DATABASE=os.environ.get("DATABASE", "instance/securedesk.sqlite"),
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
         TESTING=False,
     )
 
@@ -33,6 +35,23 @@ def create_app(test_config=None):
     app.register_blueprint(tickets)
     app.register_blueprint(auth)
     app.register_blueprint(web)
+
+    @app.after_request
+    def add_security_headers(response):
+        response.headers.setdefault("Content-Security-Policy", (
+            "default-src 'self'; style-src 'self'; img-src 'self' data:; "
+            "base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+        ))
+        response.headers.setdefault("Permissions-Policy", (
+            "camera=(), geolocation=(), microphone=()"
+        ))
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Cross-Origin-Embedder-Policy", "require-corp")
+        response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+        response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
+        return response
 
     @app.get("/")
     def index():

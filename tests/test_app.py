@@ -50,6 +50,12 @@ def test_health_endpoint(tmp_path):
 
     assert response.status_code == 200
     assert response.get_json() == {"status": "healthy"}
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert "default-src 'self'" in response.headers["Content-Security-Policy"]
+    assert response.headers["Permissions-Policy"] == (
+        "camera=(), geolocation=(), microphone=()"
+    )
 
 
 def test_create_and_fetch_ticket(tmp_path):
@@ -261,9 +267,12 @@ def test_web_login_and_dashboard(tmp_path):
             "password": "client123",
             "csrf_token": token,
         },
-        follow_redirects=True,
     )
 
+    assert response.status_code == 302
+    assert "SameSite=Lax" in response.headers["Set-Cookie"]
+    assert "HttpOnly" in response.headers["Set-Cookie"]
+    response = client.get("/dashboard")
     assert response.status_code == 200
     assert b"Tickets" in response.data
     assert b"New ticket" in response.data
