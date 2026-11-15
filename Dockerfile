@@ -19,6 +19,8 @@ ENV PATH="/opt/venv/bin:$PATH" \
 RUN apt-get update \
     && apt-get upgrade -y \
     && rm -rf /var/lib/apt/lists/* \
+    && python -m pip install --no-cache-dir --upgrade pip setuptools \
+    && rm -rf /root/.cache \
     && groupadd --system app \
     && useradd --system --gid app --create-home app \
     && mkdir -p /app/instance \
