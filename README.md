@@ -251,7 +251,10 @@ reports are generated locally and are intentionally excluded from Git because
 they may contain local URLs and session-related evidence. The remaining
 targeted DAST checks confirmed the baseline IDOR, stored XSS, and SQL
 injection findings. All three fixes were rebuilt, redeployed, and verified with
-after-remediation checks.
+after-remediation checks. A later authenticated scan on
+`securedesk:security-fixes` reported `Absence of Anti-CSRF Tokens [10202]` as
+`PASS`, with 0 failures and 10 remaining warnings for security headers and
+cookie attributes.
 
 ### Reproduce the public ZAP scan
 
@@ -333,7 +336,6 @@ run the spider and passive scan. For the Docker Baseline scan, provide the
 temporary value as a replacement in the command below:
 
 ```powershell
-$sessionCookie = "<temporary-session-cookie-value>"
 $workspace = (Get-Location).Path
 docker run --rm `
   -v "${workspace}:/zap/wrk/:rw" `
