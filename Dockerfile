@@ -6,7 +6,7 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
 WORKDIR /build
 COPY requirements.txt .
 RUN python -m venv /opt/venv \
-    && /opt/venv/bin/pip install --upgrade pip \
+    && /opt/venv/bin/pip install --upgrade pip setuptools \
     && /opt/venv/bin/pip install -r requirements.txt
 
 FROM python:3.12-slim AS runtime
@@ -16,7 +16,10 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     FLASK_DEBUG=0
 
-RUN groupadd --system app \
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system app \
     && useradd --system --gid app --create-home app \
     && mkdir -p /app/instance \
     && chown -R app:app /app

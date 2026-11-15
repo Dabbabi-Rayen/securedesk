@@ -19,12 +19,10 @@ The application foundation is complete:
 - GitHub Actions security workflow.
 - Hardened Kubernetes deployment with persistent storage and network policies.
 - Initial public and authenticated DAST scans with OWASP ZAP.
-- IDOR remediation in the application source with regression tests.
-- Stored XSS remediation in the HTML ticket view with regression tests.
-- SQL injection remediation with parameterized ticket search queries.
+- Remediation of IDOR, stored XSS, SQL injection, CSRF, and secret
+  configuration with regression tests.
 
-The remaining phases are structured logging, incident-response evidence, and
-remediation of the remaining intentional findings.
+The remaining phase is structured logging and incident-response evidence.
 
 ## Repository
 
@@ -57,11 +55,8 @@ Default branch: `main`
 ## Deliberate security findings for the project
 
 The initial training version contained five findings for the DevSecOps phases.
-The IDOR, stored XSS, SQL injection, and CSRF findings have now been
-remediated in the source code and are covered by regression tests. The
-remaining training finding is:
-
-- **Hardcoded secret:** the Flask `SECRET_KEY` uses a committed fallback value.
+The IDOR, stored XSS, SQL injection, CSRF, and hardcoded-secret findings have
+now been remediated in the source code and are covered by regression tests.
 
 | Finding | OWASP category | Demonstration endpoint |
 | --- | --- | --- |
@@ -161,6 +156,8 @@ docker compose down
 The image uses a multi-stage build, runs as the unprivileged `app` user, drops
 Linux capabilities, enables `no-new-privileges`, and mounts the database
 directory separately so the application filesystem can remain read-only.
+The image build also applies Debian security updates and upgrades the virtual
+environment packaging tools before installing the application dependencies.
 
 ## CI/CD security pipeline
 
@@ -484,8 +481,7 @@ as local evidence until the environment is reset.
 
 1. Complete targeted after-remediation checks for IDOR, stored XSS, SQL
    injection, and CSRF.
-2. Fix the remaining hardcoded-secret finding.
-3. Add safe structured logging, attack detection, and incident-response
+2. Add safe structured logging, attack detection, and incident-response
    evidence.
 4. Rerun the tests and security pipeline and document the before/after results.
 
