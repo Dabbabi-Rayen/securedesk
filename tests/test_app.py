@@ -187,6 +187,41 @@ def test_staff_can_access_client_ticket(tmp_path):
     assert response.get_json()["title"] == "Support issue"
 
 
+def test_client_ticket_listing_and_search_are_scoped(tmp_path):
+    client = make_client(tmp_path)
+    login(client)
+    client_ticket = client.post(
+        "/api/tickets",
+        json={"title": "Client ticket", "description": "Visible to owner."},
+        headers=csrf_headers(client),
+    ).get_json()
+
+    other_client = make_client(tmp_path)
+    signup_token = form_csrf_token(other_client, "/signup")
+    other_client.post(
+        "/signup",
+        data={
+            "username": "other.client",
+            "password": "other1234",
+            "confirmation": "other1234",
+            "csrf_token": signup_token,
+        },
+    )
+    other_client.post(
+        "/api/tickets",
+        json={"title": "Other ticket", "description": "Private to another owner."},
+        headers=csrf_headers(other_client),
+    )
+
+    listed = other_client.get("/api/tickets")
+    searched = other_client.get("/api/tickets/search?q=ticket")
+
+    assert listed.status_code == 200
+    assert [ticket["id"] for ticket in listed.get_json()] != [client_ticket["id"]]
+    assert all(ticket["title"] != "Client ticket" for ticket in listed.get_json())
+    assert all(ticket["title"] != "Client ticket" for ticket in searched.get_json())
+
+
 def test_ticket_view_escapes_comment_markup(tmp_path):
     client = make_client(tmp_path)
     login(client)
@@ -239,6 +274,16 @@ def test_state_change_requires_csrf_token(tmp_path):
 
     assert response.status_code == 403
     assert response.get_json() == {"error": "csrf token required"}
+
+
+def test_api_logout_requires_csrf_token(tmp_path):
+    client = make_client(tmp_path)
+    login(client)
+
+    response = client.post("/api/auth/logout")
+
+    assert response.status_code == 403
+    assert response.get_data(as_text=True) == "CSRF token required"
 
 
 def test_production_requires_secret_key(monkeypatch):

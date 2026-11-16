@@ -41,28 +41,43 @@ def create_ticket():
 @tickets.get("")
 @login_required
 def list_tickets():
-    ticket_rows = get_db().execute(
-        "SELECT * FROM tickets ORDER BY id DESC"
-    ).fetchall()
+    user = current_user()
+    if user["role"] in ("technician", "admin"):
+        ticket_rows = get_db().execute(
+            "SELECT * FROM tickets ORDER BY id DESC"
+        ).fetchall()
+    else:
+        ticket_rows = get_db().execute(
+            "SELECT * FROM tickets WHERE client_id = ? ORDER BY id DESC",
+            (user["id"],),
+        ).fetchall()
     return jsonify([serialize_ticket(ticket) for ticket in ticket_rows])
 
 
 @tickets.get("/search")
 @login_required
 def search_tickets():
+    user = current_user()
     query = request.args.get("q", "")
     if re.search(r"(?:--|/\*|\bunion\b|\bor\b.+=)", query, re.IGNORECASE):
         log_security_event(
             "ticket.search_suspicious",
             query_length=len(query),
-            user_id=current_user()["id"],
+            user_id=user["id"],
         )
     pattern = f"%{query}%"
-    rows = get_db().execute(
-        "SELECT * FROM tickets WHERE title LIKE ? "
-        "OR description LIKE ? ORDER BY id DESC",
-        (pattern, pattern),
-    ).fetchall()
+    if user["role"] in ("technician", "admin"):
+        rows = get_db().execute(
+            "SELECT * FROM tickets WHERE title LIKE ? "
+            "OR description LIKE ? ORDER BY id DESC",
+            (pattern, pattern),
+        ).fetchall()
+    else:
+        rows = get_db().execute(
+            "SELECT * FROM tickets WHERE client_id = ? "
+            "AND (title LIKE ? OR description LIKE ?) ORDER BY id DESC",
+            (user["id"], pattern, pattern),
+        ).fetchall()
     return jsonify([serialize_ticket(ticket) for ticket in rows])
 
 

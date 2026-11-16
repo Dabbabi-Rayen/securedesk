@@ -30,9 +30,8 @@ The vulnerable version is commit `4382844`.
 Run these commands once:
 
 ```cmd
-cd /d C:\Users\alhab\Desktop\9raya\Devsecops
 git worktree add ..\securedesk-vulnerable 4382844
-cd /d C:\Users\alhab\Desktop\9raya\securedesk-vulnerable
+cd ../securedesk-vulnerable
 docker build --target runtime -t securedesk:vulnerable .
 docker run -d --name securedesk-vulnerable -p 5051:5000 securedesk:vulnerable
 ```
@@ -66,7 +65,7 @@ client.demo / client123
 5. Open the first ticket:
 
 ```text
-http://127.0.0.1:5051/tickets/1
+http://127.0.0.1:5051/api/tickets/1
 ```
 
 The second client can read the first client's ticket.
@@ -343,7 +342,7 @@ Permissions Policy, SameSite cookies, and CSRF.
 ```cmd
 docker rm -f securedesk-vulnerable
 docker rm -f securedesk-secure
-cd /d C:\Users\alhab\Desktop\9raya\Devsecops
+cd C:\Users\alhab\Desktop\9raya\Devsecops
 git worktree remove ..\securedesk-vulnerable --force
 ```
 

@@ -92,6 +92,7 @@ def login():
 
 
 @auth.post("/logout")
+@csrf_protected
 def logout():
     session.clear()
     return jsonify({"status": "logged out"})

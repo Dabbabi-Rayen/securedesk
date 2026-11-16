@@ -23,7 +23,7 @@ The application foundation is complete:
   configuration with regression tests.
 
 Structured security logging is now emitted to standard output. The remaining
-step is to demonstrate the logs and document the incident-response evidence.
+step is to keep the captured logs and document the incident-response evidence.
 The DAST follow-up also hardened the HTTP security headers and session-cookie
 attributes.
 
@@ -63,6 +63,10 @@ now been remediated in the source code and are covered by regression tests.
 
 | Finding | OWASP category | Demonstration endpoint |
 | --- | --- | --- |
+| IDOR | A01 Broken Access Control | `GET /api/tickets/<id>` |
+| Stored XSS | A03 Injection | `GET /api/tickets/<id>/view` |
+| SQL injection | A03 Injection | `GET /api/tickets/search` |
+| CSRF | A01 Broken Access Control | State-changing web/API requests |
 | Hardcoded secret | A05 Security Misconfiguration | Application configuration |
 
 These are fictitious findings on the local Secure Desk application only. They
@@ -172,9 +176,9 @@ detected secrets, high or critical dependency vulnerabilities, and high or
 critical image vulnerabilities.
 
 The initial training version was expected to fail security jobs because five
-findings were intentionally present. Four application findings are now
-remediated; the hardcoded-secret finding remains until configuration is
-completed. The final goal is a passing pipeline after that remediation.
+findings were intentionally present. All five findings are now remediated and
+covered by regression tests. The retained failed and successful workflow
+screenshots demonstrate the before/after security pipeline behavior.
 
 ### GitHub setup
 
