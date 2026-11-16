@@ -1,84 +1,69 @@
-# Secure Desk - Demo Guide
+# Secure Desk - Simple Demo Guide
 
-This guide reproduces the complete Secure Desk demonstration locally.
-It uses two isolated Docker containers:
+This is the short version of the demo. Use the browser for the application
+and use only simple commands for Docker, tests, and Kubernetes.
 
-- vulnerable baseline: `http://127.0.0.1:5051`
-- corrected application: `http://127.0.0.1:5050`
+The vulnerable app uses port `5051`.
+The corrected app uses port `5050`.
 
-Only test these attacks against this local application.
+Only test the vulnerabilities on these local containers.
 
-## 1. Before the demonstration
+## 1. Run the tests first
 
-Open PowerShell in the repository:
+Open **Command Prompt** in the project folder:
 
-```powershell
-Set-Location C:\Users\alhab\Desktop\9raya\Devsecops
-git status --short
-```
-
-Do not reset or checkout over uncommitted work. The vulnerable version is
-started in a separate worktree.
-
-Run the tests:
-
-```powershell
+```cmd
+cd /d C:\Users\alhab\Desktop\9raya\Devsecops
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-Expected result:
+Expected:
 
 ```text
 19 passed
 ```
 
-## 2. Start the vulnerable baseline
+## 2. Start the vulnerable app
 
-The original vulnerable application is commit `4382844`.
+The vulnerable version is commit `4382844`.
 
-```powershell
-$vulnerablePath = "C:\Users\alhab\Desktop\9raya\securedesk-vulnerable"
-if (-not (Test-Path $vulnerablePath)) {
-    git worktree add $vulnerablePath 4382844
-}
-Set-Location $vulnerablePath
-docker build --target runtime --tag securedesk:vulnerable .
-docker run -d `
-  --name securedesk-vulnerable `
-  -p 5051:5000 `
-  securedesk:vulnerable
+Run these commands once:
+
+```cmd
+cd /d C:\Users\alhab\Desktop\9raya\Devsecops
+git worktree add ..\securedesk-vulnerable 4382844
+cd /d C:\Users\alhab\Desktop\9raya\securedesk-vulnerable
+docker build --target runtime -t securedesk:vulnerable .
+docker run -d --name securedesk-vulnerable -p 5051:5000 securedesk:vulnerable
 ```
 
-Verify it:
+Check that it is running:
 
-```powershell
-curl.exe http://127.0.0.1:5051/health
+```cmd
+curl http://127.0.0.1:5051/health
 ```
 
-Expected:
-
-```json
-{"status":"healthy"}
-```
-
-Open this URL in the browser:
+Open in the browser:
 
 ```text
 http://127.0.0.1:5051/login
 ```
 
-The baseline contains the deliberately introduced vulnerabilities. It is
-used only to demonstrate the before state.
+Use:
 
-## 3. Vulnerability demonstrations
+```text
+client.demo / client123
+```
 
-### 3.1 IDOR
+## 3. Show the vulnerable behavior
 
-1. Log in as `client.demo` / `client123`.
-2. Create a ticket and note its ID, for example `1`.
-3. Open a private/incognito browser window.
-4. Register or log in as another client.
-5. Open:
+### IDOR
+
+1. Log in as `client.demo`.
+2. Create a ticket and remember its number.
+3. Open an incognito browser window.
+4. Create or use another client account.
+5. Open the first ticket:
 
 ```text
 http://127.0.0.1:5051/tickets/1
@@ -86,22 +71,16 @@ http://127.0.0.1:5051/tickets/1
 
 The second client can read the first client's ticket.
 
-Expected baseline evidence:
+Say:
 
-```text
-HTTP 200
-```
+> The application trusts the ticket ID and does not check ownership.
 
-Explain:
+### Stored XSS
 
-> The vulnerable version trusts the ticket ID and does not enforce ownership.
-
-### 3.2 Stored XSS
-
-Add this comment to a ticket:
+Add this comment:
 
 ```html
-<script>alert('Secure Desk XSS')</script>
+<script>alert('XSS')</script>
 ```
 
 Open:
@@ -110,78 +89,66 @@ Open:
 http://127.0.0.1:5051/api/tickets/1/view
 ```
 
-The raw script is present and may execute in a browser.
+The script is returned without escaping.
 
-Explain:
+Say:
 
-> The vulnerable version inserts the stored comment into HTML without escaping.
+> The comment is stored and inserted into the page as HTML.
 
-### 3.3 SQL injection
+### SQL injection
 
-Create at least two tickets, then open:
+Create two tickets, then open this URL:
 
 ```text
 http://127.0.0.1:5051/api/tickets/search?q=%27%20OR%201%3D1%20--
 ```
 
-The search returns unrelated records because the input is concatenated into
-the SQL statement.
+The response contains unrelated tickets.
 
-Explain:
+Say:
 
-> The search condition is altered by attacker-controlled SQL syntax.
+> The search input changes the SQL condition because it is concatenated into
+> the query.
 
-### 3.4 CSRF
+### CSRF
 
-After authenticating to the vulnerable API, send a state-changing request
-without a CSRF token:
+Use the browser developer tools to submit a state-changing request without a
+CSRF token. In the vulnerable version, the request is accepted.
 
-```powershell
-curl.exe -i `
-  -X POST `
-  -H "Content-Type: application/json" `
-  -d '{"title":"CSRF baseline","description":"No token"}' `
-  http://127.0.0.1:5051/api/tickets
+Say:
+
+> A request from another website could change data because no token is checked.
+
+### Hardcoded secret
+
+Stop the vulnerable container:
+
+```cmd
+docker stop securedesk-vulnerable
 ```
 
-The vulnerable version accepts the request.
+Start it without a secret:
 
-Explain:
-
-> A cross-site request could trigger a state change because no token is
-> required.
-
-### 3.5 Hardcoded secret
-
-The vulnerable image can start without a `SECRET_KEY`:
-
-```powershell
+```cmd
 docker run --rm securedesk:vulnerable
 ```
 
-Explain:
+It still starts because the old version contains a fallback secret.
 
-> The baseline uses a development fallback secret instead of requiring a
-> production secret from the environment.
+## 4. Start the corrected app
 
-## 4. Start the corrected application
+Open a new Command Prompt:
 
-Return to the main repository:
-
-```powershell
-Set-Location C:\Users\alhab\Desktop\9raya\Devsecops
-docker build --target runtime --tag securedesk:demo-secure .
-docker run -d `
-  --name securedesk-secure `
-  -p 5050:5000 `
-  -e SECRET_KEY=demo-secure-key `
-  securedesk:demo-secure
+```cmd
+cd /d C:\Users\alhab\Desktop\9raya\Devsecops
+docker build --target runtime -t securedesk:secure .
+docker run -d --name securedesk-secure -p 5050:5000 -e SECRET_KEY=demo-key securedesk:secure
 ```
 
-Verify it:
+Check it:
 
-```powershell
-curl.exe http://127.0.0.1:5050/health
+```cmd
+curl http://127.0.0.1:5050/health
 ```
 
 Open:
@@ -190,22 +157,23 @@ Open:
 http://127.0.0.1:5050/login
 ```
 
-## 5. Show the remediations
+## 5. Show the corrected behavior
 
-Repeat each attack using port `5050`.
+Repeat the same tests using port `5050`.
 
-| Test | Corrected result |
+| Test | Correct result |
 |---|---|
-| Client reads another client's ticket | `404 Ticket not found` |
-| Stored comment contains script | Script is HTML-escaped |
-| SQL injection search | Empty result for the payload |
-| POST without CSRF token | `403 CSRF token required` |
-| Missing `SECRET_KEY` | Application refuses production startup |
+| Client opens another client's ticket | `404 Ticket not found` |
+| XSS comment | Displayed as text, no alert |
+| SQL injection search | Empty result |
+| Request without CSRF token | `403` |
+| App without `SECRET_KEY` | Startup fails |
 
-Test missing secret:
+Test the missing secret:
 
-```powershell
-docker run --rm securedesk:demo-secure
+```cmd
+docker stop securedesk-secure
+docker run --rm securedesk:secure
 ```
 
 Expected:
@@ -214,33 +182,13 @@ Expected:
 SECRET_KEY must be configured
 ```
 
-Test CSRF:
+Start it again:
 
-```powershell
-curl.exe -i `
-  -X POST `
-  -H "Content-Type: application/json" `
-  -d '{"title":"CSRF test","description":"No token"}' `
-  http://127.0.0.1:5050/api/tickets
+```cmd
+docker start securedesk-secure
 ```
 
-Expected:
-
-```text
-HTTP/1.1 403
-```
-
-## 6. Show the automated tests
-
-```powershell
-.\.venv\Scripts\python.exe -m pytest
-```
-
-The tests cover authentication, role separation, ticket ownership, XSS
-escaping, SQL injection prevention, CSRF, security headers, logging, and
-secret configuration.
-
-## 7. Show the CI/CD pipeline
+## 6. Show the pipeline
 
 Open:
 
@@ -248,33 +196,35 @@ Open:
 https://github.com/Dabbabi-Rayen/securedesk/actions
 ```
 
-Show the failed workflow first:
+Show the failed run first:
 
 ```text
 06-github-actions-failed.png
 ```
 
-Explain that it represents the intentionally vulnerable state.
+Explain:
 
-Then show the successful workflow:
+> This is the intentionally vulnerable state before remediation.
+
+Then show the successful run:
 
 ```text
 06-github-actions-success.png
 ```
 
-Point out these jobs:
+Point out:
 
-- Unit tests
-- Semgrep SAST
+- tests
+- Semgrep
 - Gitleaks
-- Trivy filesystem scan
+- Trivy dependency scan
 - Docker build
 - Trivy image scan
 
-## 8. Show Docker hardening
+## 7. Show Docker hardening
 
-```powershell
-docker inspect securedesk:demo-secure --format '{{.Config.User}}'
+```cmd
+docker inspect securedesk:secure --format "{{.Config.User}}"
 ```
 
 Expected:
@@ -283,62 +233,56 @@ Expected:
 app
 ```
 
-The production image also removes packaging tools from the runtime image and
-uses Debian security updates.
+Explain that the image runs as a non-root user and removes unnecessary
+packaging tools from the production image.
 
-Optional image scan:
+## 8. Show Kubernetes
 
-```powershell
-docker run --rm `
-  -v //var/run/docker.sock:/var/run/docker.sock `
-  aquasec/trivy:latest `
-  image `
-  --severity HIGH,CRITICAL `
-  --ignore-unfixed `
-  securedesk:demo-secure
+```cmd
+kubectl config current-context
+kubectl -n securedesk get pods
+kubectl -n securedesk get svc
+kubectl -n securedesk get networkpolicy
 ```
 
-## 9. Show Kubernetes hardening
+Show the deployment security settings:
 
-```powershell
-kubectl config current-context
-kubectl -n securedesk get pods,svc,networkpolicy
+```cmd
 kubectl -n securedesk get deployment securedesk -o yaml
 ```
 
-Point out:
+Mention:
 
-- non-root UID `999`
-- read-only root filesystem
+- non-root container
+- read-only filesystem
 - dropped capabilities
-- disabled privilege escalation
-- RuntimeDefault seccomp profile
-- disabled service-account token
-- resource requests and limits
-- readiness and liveness probes
-- persistent storage
-- default-deny network policies
+- no privilege escalation
+- seccomp profile
+- health probes
+- resource limits
+- persistent database volume
+- default-deny network policy
 
-Access the deployed application:
+Access the Kubernetes app:
 
-```powershell
+```cmd
 kubectl -n securedesk port-forward svc/securedesk 5050:5000
 ```
 
-In another terminal:
+In another Command Prompt:
 
-```powershell
-curl.exe http://127.0.0.1:5050/health
+```cmd
+curl http://127.0.0.1:5050/health
 ```
 
-## 10. Show security logs
+## 9. Show the security logs
 
-```powershell
+```cmd
 kubectl -n securedesk get pods
-kubectl -n securedesk logs deployment/securedesk --tail=100
+kubectl -n securedesk logs deployment/securedesk
 ```
 
-Look for structured JSON events such as:
+Look for events such as:
 
 ```json
 {"event":"ticket.access_denied"}
@@ -350,18 +294,18 @@ or:
 {"event":"ticket.search_suspicious"}
 ```
 
-Use this screenshot:
+Use screenshot:
 
 ```text
 20-security-log.png
 ```
 
-Explain:
+Say:
 
-> Security events are emitted to standard output so Kubernetes logging systems
-> can collect and process them.
+> The application writes structured JSON security events to the container
+> output, where Kubernetes can collect them.
 
-## 11. Show the final ZAP result
+## 10. Show ZAP
 
 Show:
 
@@ -369,68 +313,51 @@ Show:
 21-zap-hardening-after.png
 ```
 
-The important result is:
+Point out:
 
 ```text
 FAIL-NEW: 0
 ```
 
-Point out the passes for:
+Also show the successful checks for CSP, anti-clickjacking, MIME sniffing,
+Permissions Policy, SameSite cookies, and CSRF.
 
-- Content Security Policy
-- anti-clickjacking
-- `X-Content-Type-Options`
-- Permissions Policy
-- SameSite cookie
-- CSRF detection
+## 11. Recommended presentation order
 
-The remaining authentication and session-management notifications are
-informational observations, not blocking failures.
+1. Login page.
+2. Client dashboard.
+3. Create a ticket.
+4. Technician dashboard.
+5. Administrator dashboard.
+6. IDOR before and after.
+7. XSS before and after.
+8. SQL injection before and after.
+9. Failed pipeline.
+10. Successful pipeline.
+11. Docker and Kubernetes hardening.
+12. ZAP result.
+13. Kubernetes security log.
 
-## 12. Recommended presentation order
+## 12. Cleanup
 
-1. Login page and client dashboard.
-2. Create a support ticket.
-3. Show technician access.
-4. Show administrator access.
-5. Demonstrate IDOR before and after.
-6. Demonstrate stored XSS before and after.
-7. Demonstrate SQL injection before and after.
-8. Show the failed pipeline.
-9. Show the successful pipeline.
-10. Show Docker and Kubernetes hardening.
-11. Show the final ZAP summary.
-12. Show the structured Kubernetes security log.
-13. Conclude with the remediation summary.
-
-## 13. Cleanup
-
-Stop both containers:
-
-```powershell
-docker rm -f securedesk-vulnerable securedesk-secure
-```
-
-Remove the temporary vulnerable worktree after the presentation:
-
-```powershell
-Set-Location C:\Users\alhab\Desktop\9raya\Devsecops
+```cmd
+docker rm -f securedesk-vulnerable
+docker rm -f securedesk-secure
+cd /d C:\Users\alhab\Desktop\9raya\Devsecops
 git worktree remove ..\securedesk-vulnerable --force
 ```
 
-Confirm that the main repository was not overwritten:
+Check that the main project is still present:
 
-```powershell
-git status --short
-git worktree list
+```cmd
+git status
 ```
 
 ## Final explanation
 
-Secure Desk started as a deliberately vulnerable Flask helpdesk application.
-The vulnerable version demonstrated IDOR, stored XSS, SQL injection, CSRF,
-and insecure secret configuration. The corrected version enforces ownership,
-escapes HTML, parameterizes SQL, validates CSRF tokens, requires a production
-secret, passes regression tests, integrates security scanners, runs as a
-non-root container, uses Kubernetes hardening, and produces structured
-security logs.
+> Secure Desk started as a deliberately vulnerable Flask helpdesk application.
+> We demonstrated IDOR, stored XSS, SQL injection, CSRF, and insecure secret
+> configuration. We then added ownership checks, HTML escaping, parameterized
+> SQL, CSRF protection, secure configuration, automated tests, security
+> scanning, Docker hardening, Kubernetes hardening, OWASP ZAP validation, and
+> structured security logging.
