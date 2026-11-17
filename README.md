@@ -21,11 +21,12 @@ The application foundation is complete:
 - Initial public and authenticated DAST scans with OWASP ZAP.
 - Remediation of IDOR, stored XSS, SQL injection, CSRF, and secret
   configuration with regression tests.
+- Structured security logging shipped to Loki and visualised in Grafana.
 
-Structured security logging is now emitted to standard output. The remaining
-step is to keep the captured logs and document the incident-response evidence.
-The DAST follow-up also hardened the HTTP security headers and session-cookie
-attributes.
+Structured security logging is now emitted to standard output and shipped to
+Loki via Promtail. Grafana visualises the security events in a pre-built
+dashboard. The DAST follow-up also hardened the HTTP security headers and
+session-cookie attributes.
 
 ## Repository
 
@@ -536,12 +537,46 @@ After testing, stop the port-forward with `Ctrl+C`. The test tickets and
 comments are stored in the Kubernetes SQLite PVC and are intentionally kept
 as local evidence until the environment is reset.
 
+## Observability — Loki + Grafana
+
+Security events are shipped from the Kubernetes pod to Loki via Promtail and
+visualised in a pre-built Grafana dashboard.
+
+The monitoring stack lives in [k8s/monitoring/](./k8s/monitoring/) and is
+deployed independently from the application:
+
+```powershell
+kubectl apply -k k8s/monitoring/
+kubectl -n monitoring get pods
+```
+
+Access Grafana:
+
+```powershell
+kubectl -n monitoring port-forward svc/grafana 3000:3000
+```
+
+Open <http://127.0.0.1:3000> and log in with `admin` / `securedesk-grafana`.
+The **Secure Desk – Security Events** dashboard is pre-provisioned under the
+**Secure Desk** folder. It contains five panels:
+
+| Panel | LogQL filter |
+| --- | --- |
+| Security event stream | `{namespace="securedesk"}` |
+| Login failures | `\|= "auth.login_failed"` |
+| Access denied / IDOR attempts | `\|= "ticket.access_denied"` |
+| CSRF rejections | `\|= "csrf.rejected"` |
+| Suspicious search (SQLi probes) | `\|= "ticket.search_suspicious"` |
+
+Promtail tails `/var/log/pods/securedesk_*/*/*.log` on the node and pushes
+lines to Loki at `loki.monitoring.svc.cluster.local:3100`. The monitoring
+namespace has its own default-deny NetworkPolicy.
+
 ## DevSecOps roadmap
 
-1. Complete targeted after-remediation checks for IDOR, stored XSS, SQL
-   injection, and CSRF.
-2. Add safe structured logging, attack detection, and incident-response
-   evidence.
+1. ~~Complete targeted after-remediation checks for IDOR, stored XSS, SQL injection, and CSRF.~~
+2. ~~Add safe structured logging, attack detection, and incident-response evidence.~~
+3. ~~Ship logs to Loki and visualise security events in Grafana.~~
 4. Rerun the tests and security pipeline and document the before/after results.
 
 Only scan and test the local Secure Desk instance owned by the project team.

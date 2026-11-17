@@ -13,7 +13,7 @@ Only test the vulnerabilities on these local containers.
 Open **Command Prompt** in the project folder:
 
 ```cmd
-cd /d C:\Users\alhab\Desktop\9raya\Devsecops
+cd C:\Users\alhab\Desktop\9raya\Devsecops
 .\.venv\Scripts\python.exe -m pytest
 ```
 
@@ -79,7 +79,9 @@ Say:
 Add this comment:
 
 ```html
-<script>alert('XSS')</script>
+<script>
+  alert("XSS");
+</script>
 ```
 
 Open:
@@ -160,13 +162,13 @@ http://127.0.0.1:5050/login
 
 Repeat the same tests using port `5050`.
 
-| Test | Correct result |
-|---|---|
-| Client opens another client's ticket | `404 Ticket not found` |
-| XSS comment | Displayed as text, no alert |
-| SQL injection search | Empty result |
-| Request without CSRF token | `403` |
-| App without `SECRET_KEY` | Startup fails |
+| Test                                 | Correct result              |
+| ------------------------------------ | --------------------------- |
+| Client opens another client's ticket | `404 Ticket not found`      |
+| XSS comment                          | Displayed as text, no alert |
+| SQL injection search                 | Empty result                |
+| Request without CSRF token           | `403`                       |
+| App without `SECRET_KEY`             | Startup fails               |
 
 Test the missing secret:
 
@@ -284,13 +286,13 @@ kubectl -n securedesk logs deployment/securedesk
 Look for events such as:
 
 ```json
-{"event":"ticket.access_denied"}
+{ "event": "ticket.access_denied" }
 ```
 
 or:
 
 ```json
-{"event":"ticket.search_suspicious"}
+{ "event": "ticket.search_suspicious" }
 ```
 
 Use screenshot:
@@ -304,7 +306,40 @@ Say:
 > The application writes structured JSON security events to the container
 > output, where Kubernetes can collect them.
 
-## 10. Show ZAP
+## 10. Show Grafana — live security events
+
+Make sure the securedesk port-forward is running (port `5050`).
+
+In a new terminal, start the Grafana port-forward:
+
+```powershell
+kubectl -n monitoring port-forward svc/grafana 3000:3000
+```
+
+Open <http://127.0.0.1:3000> and log in with `admin` / `securedesk-grafana`.
+
+Go to **Dashboards → Secure Desk → Secure Desk – Security Events**.
+
+Set the time range to **Last 15 minutes** and auto-refresh to **10s**.
+
+Now trigger events in the browser at <http://127.0.0.1:5050>:
+
+| Action in the app | Panel that updates |
+| --- | --- |
+| Wrong password at `/login` | Login failures |
+| Open another client's ticket URL | Access denied / IDOR attempts |
+| DevTools `fetch` without CSRF token | CSRF rejections |
+| Search `?q=' OR 1=1 --` | Suspicious search (SQLi probes) |
+
+Watch the panels update in real time.
+
+Say:
+
+> Security events are shipped from the pod to Loki via Promtail and
+> visualised here in Grafana. No passwords, tokens, or raw payloads are
+> ever written to the logs.
+
+## 11. Show ZAP
 
 Show:
 
@@ -312,16 +347,10 @@ Show:
 21-zap-hardening-after.png
 ```
 
-Point out:
+Point out `FAIL-NEW: 0` and the passing checks for CSP, anti-clickjacking,
+MIME sniffing, Permissions Policy, SameSite cookies, and CSRF.
 
-```text
-FAIL-NEW: 0
-```
-
-Also show the successful checks for CSP, anti-clickjacking, MIME sniffing,
-Permissions Policy, SameSite cookies, and CSRF.
-
-## 11. Recommended presentation order
+## 12. Recommended presentation order
 
 1. Login page.
 2. Client dashboard.
@@ -334,10 +363,11 @@ Permissions Policy, SameSite cookies, and CSRF.
 9. Failed pipeline.
 10. Successful pipeline.
 11. Docker and Kubernetes hardening.
-12. ZAP result.
-13. Kubernetes security log.
+12. Grafana — live security events.
+13. ZAP result.
+14. Kubernetes security log.
 
-## 12. Cleanup
+## 13. Cleanup
 
 ```cmd
 docker rm -f securedesk-vulnerable
